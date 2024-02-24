@@ -9,7 +9,7 @@ type Lien @entity {
   repayTime: BigInt
   seizeTime: BigInt
   # loans: [Loan!]!
-  loans: [Loan!]! @derivedFrom(field: "lien")
+  loans: [Loan!]! @derivedFrom(field: "lien")   #multiple loans can be associated with each lien
 }
 
 type Loan @entity {
@@ -20,5 +20,25 @@ type Loan @entity {
   rate: BigInt!
   startTime: BigInt!
   endTime: BigInt
-  lien: Lien!
+  lien: Lien!     #lien associated with the loan
+}
+
+type Token @entity {
+  id: ID!    #collection_tokenId         
+  collection: Bytes!  
+  tokenId: BigInt!
+  uri: String!
+  lien: Lien!   #can be updated 
+}
+
+type TokenMetaData @entity(immutable: true) {
+  id: ID!   #uri
+  image: String!
+  earring: String    # 7 possible traits
+  background: String
+  fur: String
+  eyes: String
+  mouth: String
+  hat: String
+  clothes: String
 }

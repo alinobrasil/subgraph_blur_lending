@@ -10,11 +10,17 @@ import {
 import {
   Lien,
   Loan,
-
+  Token,
+  TokenMetaData
 } from "../generated/schema"
 
-// LoanOfferTaken is used to emit various situations
-// 1. brand new lien. corresponding new loan. 
+import { TokenMetadata as TokenMetadataTemplate } from "../generated/templates";
+import { json, Bytes, dataSource } from "@graphprotocol/graph-ts";
+
+const ipfsBayc = "QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq";
+
+// LoanOfferTaken is an event emitted to deal with many scenarios:
+// 1. brand new lien. corresponding loan is new too. 
 // 2. borrower repays some money, so loan amount is updated. no new loan is created.
 // 3. new loan created on existing lien. (eg. new terms, new lender and/or new amount)
 // Handle accordingly: organize data into Lien and Loan
@@ -52,13 +58,30 @@ export function handleLoanOfferTaken(event: LoanOfferTaken): void {
     lien.save()
 
 
-
+    //create a token entity
+    let token = Token.load(lien.collection.toHexString() + "_" + lien.tokenId.toString())
+    if (!token) {
+      token = new Token(lien.collection.toHexString() + "_" + lien.tokenId.toString())
+      token.collection = lien.collection
+      token.tokenId = lien.tokenId
+      token.lien = lien.id // assign lien to this
+      token.uri = ipfsBayc + "/" + event.params.tokenId.toString();
+      TokenMetadataTemplate.create(token.uri);
+    }
+    token.save()
   }
 
   else {
 
     let loans = lien.loans.load()
     let loansLength = loans.length  //prior to setting this length variable, the loop was running infinitely.
+
+    // update lien associated with this token
+    let token = Token.load(lien.collection.toString() + "_" + lien.tokenId.toString())
+    if (token) {
+      token.lien = lien.id
+    }
+
 
     for (let i = 0; i < loansLength; i++) {
       let item = Loan.load(loans[i].id)
@@ -86,6 +109,57 @@ export function handleLoanOfferTaken(event: LoanOfferTaken): void {
         }
       }
     }
+  }
+}
+
+export function handleMetadata(content: Bytes): void {
+  let tokenMetadata = new TokenMetaData(dataSource.stringParam());
+  const value = json.fromBytes(content).toObject();
+
+  if (value) {
+    const image = value.get("image");
+    const attributes = value.get("attributes");
+
+    if (image && attributes) {
+      tokenMetadata.image = image.toString();
+      const attributesArray = attributes.toArray();
+      if (attributesArray) {
+        for (let i = 0; i < attributesArray.length; i++) {
+          const attributeObject = attributesArray[i].toObject();
+          const trait_type = attributeObject.get("trait_type");
+          const value = attributeObject.get("value");
+          if (trait_type && value) {
+
+            const theTrait = trait_type.toString();
+            const theValue = value.toString();
+
+            if (theTrait == "Earring") {
+              tokenMetadata.earring = theValue;
+            } else if (theTrait == "Background") {
+              tokenMetadata.background = theValue;
+            }
+            else if (theTrait == "Fur") {
+              tokenMetadata.fur = theValue;
+            }
+            else if (theTrait == "Eyes") {
+              tokenMetadata.eyes = theValue;
+            }
+            else if (theTrait == "Mouth") {
+              tokenMetadata.mouth = theValue;
+            }
+            else if (theTrait == "Hat") {
+              tokenMetadata.hat = theValue;
+            }
+            else if (theTrait == "Clothes") {
+              tokenMetadata.clothes = theValue;
+            }
+
+          }
+        }
+        tokenMetadata.save();
+      }
+    }
+
   }
 }
 

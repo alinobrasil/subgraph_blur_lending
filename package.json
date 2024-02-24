@@ -1,5 +1,5 @@
 {
-  "name": "blend",
+  "name": "blur_lending",
   "license": "UNLICENSED",
   "scripts": {
     "codegen": "graph codegen",
