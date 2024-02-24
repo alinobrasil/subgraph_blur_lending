@@ -1,0 +1,24 @@
+type Lien @entity {
+  id: ID!
+  collection: Bytes!
+  tokenId: BigInt!
+  borrower: Bytes!
+  timeStarted: BigInt!
+  auctionDuration: BigInt
+  auctionStarted: BigInt
+  repayTime: BigInt
+  seizeTime: BigInt
+  # loans: [Loan!]!
+  loans: [Loan!]! @derivedFrom(field: "lien")
+}
+
+type Loan @entity {
+  id: ID!
+  lienId: String
+  lender: Bytes!
+  loanAmount: BigInt!
+  rate: BigInt!
+  startTime: BigInt!
+  endTime: BigInt
+  lien: Lien!
+}
