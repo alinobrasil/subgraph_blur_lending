@@ -23,3 +23,9 @@ Now, it's easy to find any borrower and identify
 Discovered some issues with FDS related tutorials:
  - Created issue for FDS tutorial: https://github.com/marcusrein/FDS-Workshop-Repo-2023/issues/2
  - The [Arweave/IPFS tutorial](https://thegraph.com/blog/file-data-sources-tutorial/) is based on Lens-Hub contract. There's a new implementation contract from last week with a few breaking changes. Here's [my implementation](https://github.com/alinobrasil/subgraph_fds_lenshub) for now.  Will look into Issue/PR later.
+
+
+Studio
+ - Query URL: https://api.studio.thegraph.com/query/53192/blur_lending/version/latest
+
+![Screenshot](/extras/screenshot_Subgraph-Studio.png)
