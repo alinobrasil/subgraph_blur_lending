@@ -1,4 +1,3 @@
-import { BigInt, log } from "@graphprotocol/graph-ts"
 
 import {
   LoanOfferTaken,
@@ -11,7 +10,9 @@ import {
   Lien,
   Loan,
   Token,
-  TokenMetaData
+  TokenMetaData,
+  Borrower,
+  Repayment
 } from "../generated/schema"
 
 import { TokenMetadata as TokenMetadataTemplate } from "../generated/templates";
@@ -28,24 +29,30 @@ export function handleLoanOfferTaken(event: LoanOfferTaken): void {
 
   const lienId = event.params.lienId.toString()
 
+
+  //initialize lien, loanAmount, rate, lender to be used across all scenarios
   const loanAmount = event.params.loanAmount
   const rate = event.params.rate
   const lender = event.params.lender
-
   // try to obtain lienId: see if it's already indexed
   let lien = Lien.load(lienId)
 
-  //scenario1: brand new lien. create new lien & loan
+  //scenario1: brand new lien. create new lien & loan -----------------------------------
   if (!lien) {
     lien = new Lien(lienId)
 
     lien.collection = event.params.collection
     lien.tokenId = event.params.tokenId
-    lien.borrower = event.params.borrower
+    lien.borrower = event.params.borrower.toHexString();
     lien.timeStarted = event.block.timestamp
     lien.auctionDuration = event.params.auctionDuration
+    // lien.active = true
+    lien.status = "active";
 
-    let loan = new Loan(lender.toHexString() + "_" + rate.toHexString() + "_" + loanAmount.toHexString())
+    let loansLength = 0;
+
+    // let loan = new Loan(lender.toHexString() + "_" + rate.toHexString() + "_" + loanAmount.toHexString())
+    let loan = new Loan(lien.id + "_" + loansLength.toString())
     loan.lien = lienId   // links to parent lien
     loan.lienId = lienId
     loan.lender = lender
@@ -58,20 +65,30 @@ export function handleLoanOfferTaken(event: LoanOfferTaken): void {
     lien.save()
 
 
-    //create a token entity
-    let token = Token.load(lien.collection.toHexString() + "_" + lien.tokenId.toString())
-    if (!token) {
-      token = new Token(lien.collection.toHexString() + "_" + lien.tokenId.toString())
-      token.collection = lien.collection
-      token.tokenId = lien.tokenId
-      token.lien = lien.id // assign lien to this
-      token.uri = ipfsBayc + "/" + event.params.tokenId.toString();
-      TokenMetadataTemplate.create(token.uri);
+    //create a token entity for BAYC
+    let collectionAddress = lien.collection.toHexString()
+    if (collectionAddress.toLowerCase() == "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d") {
+      let token = Token.load(lien.collection.toHexString() + "_" + lien.tokenId.toString())
+      if (!token) {
+        token = new Token(lien.collection.toHexString() + "_" + lien.tokenId.toString())
+        token.collection = lien.collection
+        token.tokenId = lien.tokenId
+        token.lien = lien.id // assign lien to this
+        token.uri = ipfsBayc + "/" + event.params.tokenId.toString();
+        TokenMetadataTemplate.create(token.uri);
+      }
+      token.save()
     }
-    token.save()
-  }
 
-  else {
+    //create borrower entity if not exists
+    let borrower = Borrower.load(lien.borrower)
+    if (!borrower) {
+      borrower = new Borrower(lien.borrower)
+      borrower.save()
+    }
+
+  }
+  else { //if lien already exists: handle 2 other scenarios
 
     let loans = lien.loans.load()
     let loansLength = loans.length  //prior to setting this length variable, the loop was running infinitely.
@@ -87,13 +104,28 @@ export function handleLoanOfferTaken(event: LoanOfferTaken): void {
       let item = Loan.load(loans[i].id)
 
       if (item) {
-        // scenario 2: same term. update loan amount (borrower paid back some money)
+        // scenario 2: same term. update loan amount (borrower paid back some money, not all) -----------------------
         if (item.lender == lender && item.rate == rate && item.loanAmount != loanAmount) {
           item.loanAmount = loanAmount
           item.save()
+
+          //update lien status
+          lien.status = "repaid"; //repaid in full. lien no longer active     
+          lien.save()
+
+          // create repayment record: partial repayment
+          let repayment = new Repayment(event.transaction.hash.toHexString() + "_" + lienId);
+          repayment.lien = lien.id;
+          let repaidAmount = loanAmount.toU64() - item.loanAmount.toU64();
+          repayment.time = event.block.timestamp;
+          repayment.borrower = lien.borrower;
+
+
+
         } else {
-          // scenario 3: some term changed. create new loan.
-          let loan = new Loan(lender.toHexString() + "_" + rate.toHexString() + "_" + loanAmount.toHexString())
+          // scenario 3: some term changed. create new loan.----------------------------------------
+          // let loan = new Loan(lender.toHexString() + "_" + rate.toHexString() + "_" + loanAmount.toHexString())
+          let loan = new Loan(lien.id + "_" + loansLength.toString())
           loan.lien = lienId
           loan.lienId = lienId
           loan.lender = lender
@@ -109,7 +141,10 @@ export function handleLoanOfferTaken(event: LoanOfferTaken): void {
         }
       }
     }
-  }
+  } // end handling 3 scenarios. lien saved.
+
+
+
 }
 
 export function handleMetadata(content: Bytes): void {
@@ -164,14 +199,34 @@ export function handleMetadata(content: Bytes): void {
 }
 
 
-// track when repay event was triggered
+// track when repay event was triggered (loan repaid in full)
 export function handleRepay(event: Repay): void {
-  const lienId = event.params.lienId
+  const lienId = event.params.lienId.toString()
 
   let lien = Lien.load(lienId.toString())
   if (lien) {
-    lien.repayTime = event.block.timestamp
+    // lien.repayTime = event.block.timestamp
+    lien.status = "repaid";
     lien.save()
+
+
+    let loans = lien.loans.load()
+    let loansLength = loans.length
+
+    //get full loan amount
+    let lastLoan = Loan.load(loans[loansLength - 1].id)
+
+    //create repayment record, using full amount
+    if (lastLoan) {
+      // create repayment entity
+      let repayment = new Repayment(event.transaction.hash.toHexString() + "_" + lienId);
+      repayment.lien = lien.id;
+      let repaidAmount = lastLoan.loanAmount;
+      repayment.repaidAmount = repaidAmount;
+      repayment.time = event.block.timestamp;
+      repayment.borrower = lien.borrower;
+      repayment.save()
+    }
   }
 }
 
@@ -181,7 +236,8 @@ export function handleSeize(event: Seize): void {
 
   let lien = Lien.load(lienId.toString())
   if (lien) {
-    lien.seizeTime = event.block.timestamp
+    // lien.seizeTime = event.block.timestamp
+    lien.status = "seized";
     lien.save()
   }
 }

@@ -1,19 +1,19 @@
 type Lien @entity {
-  id: ID!
+  id: ID! #lienId from event
   collection: Bytes!
   tokenId: BigInt!
-  borrower: Bytes!
+  borrower: Borrower!
   timeStarted: BigInt!
   auctionDuration: BigInt
   auctionStarted: BigInt
-  repayTime: BigInt
-  seizeTime: BigInt
-  # loans: [Loan!]!
+  # repayTime: BigInt
+  # seizeTime: BigInt
+  status: String!
   loans: [Loan!]! @derivedFrom(field: "lien")   #multiple loans can be associated with each lien
 }
 
 type Loan @entity {
-  id: ID!
+  id: ID! #lienId_[loan #]
   lienId: String
   lender: Bytes!
   loanAmount: BigInt!
@@ -41,4 +41,18 @@ type TokenMetaData @entity(immutable: true) {
   mouth: String
   hat: String
   clothes: String
+}
+
+type Repayment @entity {
+  id: ID!
+  lien: Lien!   #loan associated with the repayment
+  repaidAmount: BigInt! 
+  time: BigInt!
+  borrower: Borrower!   #borrower associated with the repayment
+}
+
+type Borrower @entity {
+  id: ID!
+  payments: [Repayment!]! @derivedFrom(field: "borrower")   
+  collateral: [Lien!]! @derivedFrom(field: "borrower")
 }

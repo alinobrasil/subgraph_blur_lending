@@ -76,17 +76,17 @@ export class Lien extends Entity {
     this.set("tokenId", Value.fromBigInt(value));
   }
 
-  get borrower(): Bytes {
+  get borrower(): string {
     let value = this.get("borrower");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toBytes();
+      return value.toString();
     }
   }
 
-  set borrower(value: Bytes) {
-    this.set("borrower", Value.fromBytes(value));
+  set borrower(value: string) {
+    this.set("borrower", Value.fromString(value));
   }
 
   get timeStarted(): BigInt {
@@ -136,38 +136,17 @@ export class Lien extends Entity {
     }
   }
 
-  get repayTime(): BigInt | null {
-    let value = this.get("repayTime");
+  get status(): string {
+    let value = this.get("status");
     if (!value || value.kind == ValueKind.NULL) {
-      return null;
+      throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toBigInt();
+      return value.toString();
     }
   }
 
-  set repayTime(value: BigInt | null) {
-    if (!value) {
-      this.unset("repayTime");
-    } else {
-      this.set("repayTime", Value.fromBigInt(<BigInt>value));
-    }
-  }
-
-  get seizeTime(): BigInt | null {
-    let value = this.get("seizeTime");
-    if (!value || value.kind == ValueKind.NULL) {
-      return null;
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set seizeTime(value: BigInt | null) {
-    if (!value) {
-      this.unset("seizeTime");
-    } else {
-      this.set("seizeTime", Value.fromBigInt(<BigInt>value));
-    }
+  set status(value: string) {
+    this.set("status", Value.fromString(value));
   }
 
   get loans(): LoanLoader {
@@ -580,6 +559,150 @@ export class TokenMetaData extends Entity {
   }
 }
 
+export class Repayment extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Repayment entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type Repayment must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("Repayment", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): Repayment | null {
+    return changetype<Repayment | null>(store.get_in_block("Repayment", id));
+  }
+
+  static load(id: string): Repayment | null {
+    return changetype<Repayment | null>(store.get("Repayment", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get lien(): string {
+    let value = this.get("lien");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set lien(value: string) {
+    this.set("lien", Value.fromString(value));
+  }
+
+  get repaidAmount(): BigInt {
+    let value = this.get("repaidAmount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set repaidAmount(value: BigInt) {
+    this.set("repaidAmount", Value.fromBigInt(value));
+  }
+
+  get time(): BigInt {
+    let value = this.get("time");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set time(value: BigInt) {
+    this.set("time", Value.fromBigInt(value));
+  }
+
+  get borrower(): string {
+    let value = this.get("borrower");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set borrower(value: string) {
+    this.set("borrower", Value.fromString(value));
+  }
+}
+
+export class Borrower extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Borrower entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type Borrower must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("Borrower", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): Borrower | null {
+    return changetype<Borrower | null>(store.get_in_block("Borrower", id));
+  }
+
+  static load(id: string): Borrower | null {
+    return changetype<Borrower | null>(store.get("Borrower", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get payments(): RepaymentLoader {
+    return new RepaymentLoader(
+      "Borrower",
+      this.get("id")!.toString(),
+      "payments",
+    );
+  }
+
+  get collateral(): LienLoader {
+    return new LienLoader("Borrower", this.get("id")!.toString(), "collateral");
+  }
+}
+
 export class LoanLoader extends Entity {
   _entity: string;
   _field: string;
@@ -595,5 +718,41 @@ export class LoanLoader extends Entity {
   load(): Loan[] {
     let value = store.loadRelated(this._entity, this._id, this._field);
     return changetype<Loan[]>(value);
+  }
+}
+
+export class RepaymentLoader extends Entity {
+  _entity: string;
+  _field: string;
+  _id: string;
+
+  constructor(entity: string, id: string, field: string) {
+    super();
+    this._entity = entity;
+    this._id = id;
+    this._field = field;
+  }
+
+  load(): Repayment[] {
+    let value = store.loadRelated(this._entity, this._id, this._field);
+    return changetype<Repayment[]>(value);
+  }
+}
+
+export class LienLoader extends Entity {
+  _entity: string;
+  _field: string;
+  _id: string;
+
+  constructor(entity: string, id: string, field: string) {
+    super();
+    this._entity = entity;
+    this._id = id;
+    this._field = field;
+  }
+
+  load(): Lien[] {
+    let value = store.loadRelated(this._entity, this._id, this._field);
+    return changetype<Lien[]>(value);
   }
 }
