@@ -1,6 +1,6 @@
 
 ### Background Info
-This is based on a previous graph I built, with significant changes added. It captures events from Blend (Blur's lending contract) to identify when a loan has initiated the liquidation process for NFT collateral. Relevant smart contracts can be found in the `extras` folder.
+This is based on a previous subgraph I built, with significant changes added. It captures events from Blend (Blur's lending contract) to identify when a loan has initiated the liquidation process for NFT collateral. Relevant smart contracts can be found in the `extras` folder.
 
 Previously, it only organized events into Lien & Loan entities. It also didn't offer a way to easily track repayments or borrowers. Today I've added these changes:
 ## Using File Data Sources for token metadata
